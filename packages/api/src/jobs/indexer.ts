@@ -42,8 +42,8 @@ function serializeArgs(args: any): Record<string, any> {
 }
 
 export async function indexEvents(fromBlock?: number, toBlock?: number) {
-  if (!CONTRACT_ADDRESS) {
-    console.warn('[indexer] CONTRACT_ADDRESS not set, skipping');
+  if (!CONTRACT_ADDRESS || CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') {
+    console.warn('[indexer] CONTRACT_ADDRESS not set or zero address, skipping');
     return;
   }
 
@@ -56,12 +56,17 @@ export async function indexEvents(fromBlock?: number, toBlock?: number) {
 
   if (start > end) return;
 
-  const events = await contract.queryFilter(contract.filters.IDActivated(), start, end);
-  events.push(...(await contract.queryFilter(contract.filters.ReTopUp(), start, end)));
-  events.push(...(await contract.queryFilter(contract.filters.PoolReset(), start, end)));
-  events.push(...(await contract.queryFilter(contract.filters.IndirectPaid(), start, end)));
-  events.push(...(await contract.queryFilter(contract.filters.LevelPaid(), start, end)));
-  events.push(...(await contract.queryFilter(contract.filters.DirectPaid(), start, end)));
+  const CHUNK_SIZE = 5000;
+  const events = [];
+  for (let chunkStart = start; chunkStart <= end; chunkStart += CHUNK_SIZE) {
+    const chunkEnd = Math.min(chunkStart + CHUNK_SIZE - 1, end);
+    events.push(...(await contract.queryFilter(contract.filters.IDActivated(), chunkStart, chunkEnd)));
+    events.push(...(await contract.queryFilter(contract.filters.ReTopUp(), chunkStart, chunkEnd)));
+    events.push(...(await contract.queryFilter(contract.filters.PoolReset(), chunkStart, chunkEnd)));
+    events.push(...(await contract.queryFilter(contract.filters.IndirectPaid(), chunkStart, chunkEnd)));
+    events.push(...(await contract.queryFilter(contract.filters.LevelPaid(), chunkStart, chunkEnd)));
+    events.push(...(await contract.queryFilter(contract.filters.DirectPaid(), chunkStart, chunkEnd)));
+  }
 
   events.sort((a, b) => {
     if (a.blockNumber !== b.blockNumber) return a.blockNumber - b.blockNumber;

@@ -27,7 +27,8 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
 export async function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
   if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
   const user = await prisma.user.findUnique({ where: { id: req.user.id } });
-  if (!user || user.walletAddress !== process.env.ADMIN_WALLET) {
+  const adminWallet = (process.env.ADMIN_WALLET || '').toLowerCase();
+  if (!user || user.walletAddress.toLowerCase() !== adminWallet) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   next();
