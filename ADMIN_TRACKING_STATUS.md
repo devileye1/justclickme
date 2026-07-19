@@ -61,6 +61,29 @@ This document tracks the implementation status of the admin tracking system for 
 - [x] TypeScript typecheck passes (`pnpm --filter api lint`)
 - [x] Prisma client generated successfully
 - [x] Admin endpoints tested successfully with `test-admin.ts` (nonce, login, stats, users, audit, sessions, transactions, analytics)
+- [x] API and indexer running under PM2 with log rotation and restart policies
+
+### PM2 / Operations
+- [x] Install PM2 globally
+- [x] Configure `ecosystem.config.js` to run API and indexer via `ts-node`
+- [x] Start both processes under PM2 and verify they are `online`
+- [x] Check logs for errors
+
+## Current Findings / Bugs Identified
+
+### Working ✅
+- API server starts and responds on port 4000
+- Health endpoint returns `ok`
+- Admin authentication and all admin endpoints return `200`
+- PM2 successfully manages both API and indexer processes
+- TypeScript typecheck passes
+
+### Not Working / Needs Attention ⚠️
+- **Indexer is idle:** `CONTRACT_ADDRESS` is currently set to the zero address in `.env`, so the indexer skips every poll. This is expected until a real contract address is configured.
+  - **Fix:** Update `CONTRACT_ADDRESS` in `packages/api/.env` to the deployed `JustClickMeMatrix` address and restart the indexer (`pm2 restart justclickme-indexer`).
+
+### Minor Issues
+- `pnpm --filter @justclickme/api dev` originally used `nodemon`, which conflicted with PM2. Fixed by switching to `ts-node` directly in `ecosystem.config.js`.
 
 ## Pending / Next Steps ⏳
 
