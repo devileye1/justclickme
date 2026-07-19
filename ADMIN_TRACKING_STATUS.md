@@ -5,6 +5,16 @@ This document tracks the implementation status of the admin tracking system for 
 
 ## Done ✅
 
+### Infrastructure / Runtime
+- [x] Install PostgreSQL and create `bitfty_db`
+- [x] Apply Prisma migration (`pnpm --filter api db:push`)
+- [x] Start API server on port 4000 (running in tmux session `justclickme-api`)
+- [x] Start on-chain event indexer (running in tmux session `justclickme-indexer`)
+- [x] Compile Hardhat contracts with OpenZeppelin v5 (`evmVersion: cancun`)
+- [x] Create systemd service file and PM2 config for indexer
+- [x] Create `.env.example`
+- [x] Push all changes to GitHub (`https://github.com/devileye1/justclickme`)
+
 ### Database Layer
 - [x] Extended Prisma schema with tracking models:
   - `AuditLog` — records every modifying API action
@@ -50,6 +60,7 @@ This document tracks the implementation status of the admin tracking system for 
 ### Validation
 - [x] TypeScript typecheck passes (`pnpm --filter api lint`)
 - [x] Prisma client generated successfully
+- [x] Admin endpoints tested successfully with `test-admin.ts` (nonce, login, stats, users, audit, sessions, transactions, analytics)
 
 ## Pending / Next Steps ⏳
 
