@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(uuid())
+  walletAddress   String   @unique
+  email           String?  @unique
+  username        String?  @unique
+  passwordHash    String?
+  nonce           String?
+  directReferrals Int      @default(0)
+  directsRequired Int      @default(3)
+  indirectCycles  Int      @default(0)
+  indirectCap     Int      @default(5)
+  isQualified     Boolean  @default(false)
+  isSuspended     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  referrerId      String?
+  referrer        User?    @relation("UserReferrer", fields: [referrerId], references: [id])
+  referrals       User[]   @relation("UserReferrer")
+
+  adWallet        AdWallet?
+  miningLedger    MiningLedger?
+  airdrops        Airdrop[]
+  nfts            NFT[]
+  adWatches       AdWatch[]
+  matrixPosition  MatrixPosition?
+  sessions        UserSession[]
+  auditLogs       AuditLog[]
+  transactions    FinancialTransaction[]
+}
+
+model MatrixPosition {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id])
+  globalId          Int      @unique @default(autoincrement())
+  parentId          Int?
+  leftChild         Int?
+  middleChild       Int?
+  rightChild        Int?
+  level             Int      @default(1)
+  personalPoolCount Int      @default(0)
+  poolReserves      Float    @default(0)
+  subIds            String[] @default([])
+}
+
+model AdWallet {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id])
+  balance           Float    @default(0)
+  lockedBalance     Float    @default(0)
+  unlockedBalance   Float    @default(0)
+  tier              String   @default("none")
+  lastWatch         DateTime?
+  streakDays        Int      @default(0)
+}
+
+model AdWatch {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  watchedAt DateTime @default(now())
+  reward    Float    @default(3)
+  ipAddress String?
+}
+
+model MiningLedger {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id])
+  subscriptionActive Boolean  @default(false)
+  subscriptionExpiry DateTime?
+  totalMined         Float    @default(0)
+  dailyMined         Float    @default(0)
+  lastMineDate       DateTime?
+  monthlyFee         Float    @default(3)
+}
+
+model Airdrop {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  amount      Float
+  periodStart DateTime
+  periodEnd   DateTime
+  released    Boolean  @default(false)
+  releasedAt  DateTime?
+}
+
+model NFT {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  tokenId     Int
+  type        String
+  lockedUntil DateTime
+  mintedAt    DateTime @default(now())
+}
+
+model SystemConfig {
+  id                String @id @default("main")
+  entryFee          Float  @default(40)
+  adminFee          Float  @default(5)
+  directBonus       Float  @default(10)
+  levelPool         Float  @default(10)
+  indirectPool      Float  @default(10)
+  reservePool       Float  @default(5)
+  adRewardDaily     Float  @default(3)
+  miningFeeMonthly  Float  @default(3)
+  coinPrice         Float  @default(5)
+  nftLockMonths     Int    @default(12)
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  targetId    String?
+  action      String
+  details     Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([targetId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model UserSession {
+  id          String   @id @default(uuid())
+  userId      String
+  ipAddress   String?
+  userAgent   String?
+  loginAt     DateTime @default(now())
+  lastActive  DateTime @default(now())
+  isValid     Boolean  @default(true)
+
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([loginAt])
+}
+
+model ContractEvent {
+  id              String   @id @default(uuid())
+  eventName       String
+  transactionHash String
+  blockNumber     Int
+  logIndex        Int
+  walletAddress   String
+  amount          Float?
+  rawData         Json
+  processed       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@unique([transactionHash, logIndex])
+  @@index([eventName])
+  @@index([walletAddress])
+  @@index([blockNumber])
+  @@index([createdAt])
+}
+
+model FinancialTransaction {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String
+  amount      Float
+  status      String
+  txHash      String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, type])
+  @@index([createdAt])
+}

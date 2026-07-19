@@ -1,0 +1,22 @@
+[Unit]
+Description=JustClickMe On-Chain Event Indexer
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/justclickme/packages/api
+Environment="NODE_ENV=production"
+Environment="DATABASE_URL=postgresql://bitfty:bitfty_secure_2026@localhost:5432/bitfty_db?schema=public"
+Environment="JWT_SECRET=your_ultra_secure_jwt_secret_here_256bits"
+Environment="BSC_TESTNET_RPC=https://data-seed-prebsc-1-s1.binance.org:8545"
+Environment="CONTRACT_ADDRESS=0x..."
+Environment="ADMIN_WALLET=0x..."
+Environment="INDEXER_POLL_INTERVAL_MS=60000"
+Environment="INDEXER_START_BLOCK=0"
+ExecStart=/root/.nvm/versions/node/v25.9.0/bin/pnpm --filter @justclickme/api indexer
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
