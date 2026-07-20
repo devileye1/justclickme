@@ -88,7 +88,10 @@ This document tracks the implementation status of the admin tracking system for 
 ## Pending / Next Steps ⏳
 
 ### Infrastructure
-- [ ] Configure production RPC URL and contract address in environment variables
+- [x] Configure Cloudflare Tunnel ready frontend on port 5674 with API rewrites to backend
+- [x] Create Hardhat deploy scripts for BNB testnet
+- [x] Write and pass Hardhat tests for all contracts
+- [ ] Deploy contracts to BNB testnet and update API environment variables
 - [ ] Run the indexer continuously in production (systemd/PM2/Docker)
 - [ ] Add rate limiting to admin and auth endpoints
 - [ ] Set up log rotation for indexer output
