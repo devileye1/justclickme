@@ -94,6 +94,7 @@ This document tracks the implementation status of the admin tracking system for 
 - [x] Update `src/jobs/indexer.ts` to process `IDActivated`/`ReTopUp` and trigger backend services
 - [x] Update Hardhat tests for simplified contract
 - [x] Add frontend dashboard and matrix tree pages
+- [x] Add integration tests for matrix service (9 tests passing)
 
 ## Pending / Next Steps ⏳
 
