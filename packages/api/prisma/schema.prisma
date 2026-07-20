@@ -17,7 +17,7 @@ model User {
   directReferrals Int      @default(0)
   directsRequired Int      @default(3)
   indirectCycles  Int      @default(0)
-  indirectCap     Int      @default(5)
+  indirectCap     Int      @default(1)
   isQualified     Boolean  @default(false)
   isSuspended     Boolean  @default(false)
   isCapped        Boolean  @default(false)

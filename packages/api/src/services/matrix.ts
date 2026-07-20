@@ -135,8 +135,7 @@ export async function updatePersonalPool(activatedUserId: string) {
   if (!activatedPosition || !activatedPosition.parentId) return;
 
   let parentId: number | null = activatedPosition.parentId;
-  for (let depth = 0; depth < 3; depth++) {
-    if (!parentId) break;
+  while (parentId) {
     const parent = (await prisma.matrixPosition.findUnique({
       where: { globalId: parentId },
       include: { user: true },
@@ -190,7 +189,7 @@ export async function resetPersonalPool(userId: string) {
     where: { id: position.id },
     data: {
       personalPoolCount: 0,
-      poolReserves: { decrement: 5 },
+      poolReserves: 0,
       subIds: { push: `sub-${Date.now()}` },
     },
   });
