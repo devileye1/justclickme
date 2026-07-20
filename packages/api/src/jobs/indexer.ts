@@ -1,14 +1,11 @@
 import 'dotenv/config';
 import { ethers } from 'ethers';
 import { prisma } from '../db';
+import * as matrixService from '../services/matrix';
 
 const ABI = [
-  'event IDActivated(address indexed user, uint256 indexed id, address indexed sponsor)',
-  'event ReTopUp(address indexed user, address indexed sponsor)',
-  'event PoolReset(address indexed user)',
-  'event IndirectPaid(address indexed user, uint256 amount)',
-  'event LevelPaid(address indexed user, uint256 amount)',
-  'event DirectPaid(address indexed user, uint256 amount)',
+  'event IDActivated(address indexed user, address indexed sponsor, uint256 amount)',
+  'event ReTopUp(address indexed user, address indexed sponsor, uint256 amount)',
 ];
 
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
@@ -19,11 +16,6 @@ const START_BLOCK = parseInt(process.env.INDEXER_START_BLOCK || '0', 10);
 function getProvider() {
   if (!RPC_URL) throw new Error('RPC_URL not configured');
   return new ethers.JsonRpcProvider(RPC_URL);
-}
-
-function amountFromData(amount: bigint | undefined): number | null {
-  if (amount === undefined) return null;
-  return Number(ethers.formatEther(amount));
 }
 
 function serializeArgs(args: any): Record<string, any> {
@@ -62,10 +54,6 @@ export async function indexEvents(fromBlock?: number, toBlock?: number) {
     const chunkEnd = Math.min(chunkStart + CHUNK_SIZE - 1, end);
     events.push(...(await contract.queryFilter(contract.filters.IDActivated(), chunkStart, chunkEnd)));
     events.push(...(await contract.queryFilter(contract.filters.ReTopUp(), chunkStart, chunkEnd)));
-    events.push(...(await contract.queryFilter(contract.filters.PoolReset(), chunkStart, chunkEnd)));
-    events.push(...(await contract.queryFilter(contract.filters.IndirectPaid(), chunkStart, chunkEnd)));
-    events.push(...(await contract.queryFilter(contract.filters.LevelPaid(), chunkStart, chunkEnd)));
-    events.push(...(await contract.queryFilter(contract.filters.DirectPaid(), chunkStart, chunkEnd)));
   }
 
   events.sort((a, b) => {
@@ -78,7 +66,8 @@ export async function indexEvents(fromBlock?: number, toBlock?: number) {
     const log = event as any;
     const eventName = log.eventName || log.fragment?.name || log.name || 'Unknown';
     const walletAddress = (log.args?.user as string)?.toLowerCase() ?? '';
-    const amount = amountFromData(log.args?.amount);
+    const sponsorAddress = (log.args?.sponsor as string)?.toLowerCase() ?? '';
+    const amount = log.args?.amount ? Number(ethers.formatEther(log.args.amount)) : null;
 
     try {
       await prisma.contractEvent.create({
@@ -96,6 +85,12 @@ export async function indexEvents(fromBlock?: number, toBlock?: number) {
         },
       });
       inserted++;
+
+      if (eventName === 'IDActivated') {
+        await matrixService.handleActivation(walletAddress, sponsorAddress || undefined);
+      } else if (eventName === 'ReTopUp') {
+        await matrixService.handleReTopUp(walletAddress);
+      }
     } catch (err: any) {
       if (err.code === 'P2002') {
         // duplicate, ignore

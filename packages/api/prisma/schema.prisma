@@ -20,6 +20,9 @@ model User {
   indirectCap     Int      @default(5)
   isQualified     Boolean  @default(false)
   isSuspended     Boolean  @default(false)
+  isCapped        Boolean  @default(false)
+  matrixBalance   Float    @default(0)
+  withdrawnAmount Float    @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   referrerId      String?
@@ -35,21 +38,52 @@ model User {
   sessions        UserSession[]
   auditLogs       AuditLog[]
   transactions    FinancialTransaction[]
+  levelPayments   MatrixLevelPayment[]
+  poolResets      PoolResetLog[]
+  withdrawals     Withdrawal[]
 }
 
 model MatrixPosition {
-  id                String   @id @default(uuid())
-  userId            String   @unique
-  user              User     @relation(fields: [userId], references: [id])
-  globalId          Int      @unique @default(autoincrement())
+  id                String          @id @default(uuid())
+  userId            String          @unique
+  user              User            @relation(fields: [userId], references: [id])
+  globalId          Int             @unique @default(autoincrement())
   parentId          Int?
-  leftChild         Int?
-  middleChild       Int?
-  rightChild        Int?
-  level             Int      @default(1)
-  personalPoolCount Int      @default(0)
-  poolReserves      Float    @default(0)
-  subIds            String[] @default([])
+  parent            MatrixPosition? @relation("Tree", fields: [parentId], references: [globalId])
+  children          MatrixPosition[] @relation("Tree")
+  level             Int             @default(1)
+  personalPoolCount Int             @default(0)
+  poolReserves      Float           @default(0)
+  subIds            String[]        @default([])
+  currentCycle      Int             @default(0)
+
+  @@index([parentId])
+  @@index([globalId])
+}
+
+model MatrixLevelPayment {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  fromUserId  String
+  level       Int
+  amount      Float
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model PoolResetLog {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  cycle           Int
+  amountCredited  Float
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model AdWallet {
@@ -185,5 +219,20 @@ model FinancialTransaction {
   user        User     @relation(fields: [userId], references: [id])
 
   @@index([userId, type])
+  @@index([createdAt])
+}
+
+model Withdrawal {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  amount      Float
+  status      String   @default("PENDING")
+  txHash      String?
+  createdAt   DateTime @default(now())
+  processedAt DateTime?
+
+  @@index([userId])
+  @@index([status])
   @@index([createdAt])
 }

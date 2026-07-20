@@ -85,6 +85,16 @@ This document tracks the implementation status of the admin tracking system for 
 ### Minor Issues
 - `pnpm --filter @justclickme/api dev` originally used `nodemon`, which conflicted with PM2. Fixed by switching to `ts-node` directly in `ecosystem.config.js`.
 
+## Hybrid Matrix / Pool Implementation ✅
+- [x] Simplify `JustClickMeMatrix.sol` to payment gateway ($10 direct sponsor, $30 treasury)
+- [x] Update Prisma schema with `matrixBalance`, `withdrawnAmount`, `isCapped`, `MatrixLevelPayment`, `PoolResetLog`, `Withdrawal`
+- [x] Implement `src/services/matrix.ts` for global 3×3 placement, level distribution, personal pool tracking, auto-reset, re-top-up
+- [x] Update `src/controllers/matrix.ts` with dashboard, tree, pool-status, and withdrawal endpoints
+- [x] Update `src/routes/matrix.ts` with new endpoints
+- [x] Update `src/jobs/indexer.ts` to process `IDActivated`/`ReTopUp` and trigger backend services
+- [x] Update Hardhat tests for simplified contract
+- [x] Add frontend dashboard and matrix tree pages
+
 ## Pending / Next Steps ⏳
 
 ### Infrastructure

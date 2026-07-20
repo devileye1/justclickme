@@ -11,55 +11,36 @@ contract JustClickMeMatrix is Initializable, AccessControlUpgradeable, PausableU
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     uint256 public entryFee;
-    uint256 public directRequirement;
-    uint256 public indirectCapQualified;
-    uint256 public indirectCapUnqualified;
+    address public treasury;
 
-    struct User {
-        uint256 id;
-        address wallet;
-        address sponsor;
-        uint256 directReferrals;
-        uint256 indirectCycles;
-        bool qualified;
-    }
+    mapping(address => bool) public active;
+    mapping(address => address) public sponsorOf;
 
-    mapping(address => User) public users;
-    mapping(uint256 => address) public idToUser;
-    uint256 public nextId;
+    event IDActivated(address indexed user, address indexed sponsor, uint256 amount);
+    event ReTopUp(address indexed user, address indexed sponsor, uint256 amount);
+    event TreasuryUpdated(address indexed newTreasury);
+    event EntryFeeUpdated(uint256 newEntryFee);
 
-    event IDActivated(address indexed user, uint256 indexed id, address indexed sponsor);
-    event ReTopUp(address indexed user, address indexed sponsor);
-    event PoolReset(address indexed user);
-    event IndirectPaid(address indexed user, uint256 amount);
-    event LevelPaid(address indexed user, uint256 amount);
-    event DirectPaid(address indexed user, uint256 amount);
-
-    function initialize(address admin) public initializer {
+    function initialize(address admin, address _treasury) public initializer {
         __AccessControl_init();
         __Pausable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ADMIN_ROLE, admin);
         _grantRole(UPGRADER_ROLE, admin);
         entryFee = 40 * 1e18;
-        directRequirement = 3;
-        indirectCapQualified = 5;
-        indirectCapUnqualified = 1;
+        treasury = _treasury;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
 
     function setEntryFee(uint256 _entryFee) external onlyRole(ADMIN_ROLE) {
         entryFee = _entryFee;
+        emit EntryFeeUpdated(_entryFee);
     }
 
-    function setDirectRequirement(uint256 _directRequirement) external onlyRole(ADMIN_ROLE) {
-        directRequirement = _directRequirement;
-    }
-
-    function setIndirectCap(uint256 qualified, uint256 unqualified) external onlyRole(ADMIN_ROLE) {
-        indirectCapQualified = qualified;
-        indirectCapUnqualified = unqualified;
+    function setTreasury(address _treasury) external onlyRole(ADMIN_ROLE) {
+        treasury = _treasury;
+        emit TreasuryUpdated(_treasury);
     }
 
     function pause() external onlyRole(ADMIN_ROLE) {
@@ -71,45 +52,40 @@ contract JustClickMeMatrix is Initializable, AccessControlUpgradeable, PausableU
     }
 
     function activateID(address sponsor) external payable whenNotPaused {
-        require(users[msg.sender].wallet == address(0), "Already active");
+        require(!active[msg.sender], "Already active");
         require(msg.value >= entryFee, "Insufficient fee");
 
-        uint256 id = nextId++;
-        users[msg.sender] = User({
-            id: id,
-            wallet: msg.sender,
-            sponsor: sponsor,
-            directReferrals: 0,
-            indirectCycles: 0,
-            qualified: false
-        });
-        idToUser[id] = msg.sender;
+        active[msg.sender] = true;
+        sponsorOf[msg.sender] = sponsor;
 
-        if (sponsor != address(0)) {
-            users[sponsor].directReferrals++;
-            if (users[sponsor].directReferrals >= directRequirement) {
-                users[sponsor].qualified = true;
-            }
-        }
+        _distribute(msg.sender, sponsor);
 
-        emit IDActivated(msg.sender, id, sponsor);
+        emit IDActivated(msg.sender, sponsor, msg.value);
     }
 
     function retopUp() external payable whenNotPaused {
-        require(users[msg.sender].wallet != address(0), "Not active");
+        require(active[msg.sender], "Not active");
         require(msg.value >= entryFee, "Insufficient fee");
-        address sponsor = users[msg.sender].sponsor;
-        if (sponsor != address(0)) {
-            (bool success, ) = sponsor.call{value: 10 * 1e18}("");
-            require(success, "Sponsor payment failed");
-            emit DirectPaid(sponsor, 10 * 1e18);
-        }
-        users[msg.sender].indirectCycles = 0;
-        emit ReTopUp(msg.sender, sponsor);
+
+        address sponsor = sponsorOf[msg.sender];
+        _distribute(msg.sender, sponsor);
+
+        emit ReTopUp(msg.sender, sponsor, msg.value);
     }
 
-    function distribute() external payable onlyRole(ADMIN_ROLE) {
-        // Placeholder for off-chain orchestrated distribution
+    function _distribute(address user, address sponsor) internal {
+        uint256 directAmount = 10 * 1e18;
+        uint256 treasuryAmount = 30 * 1e18;
+
+        if (sponsor != address(0)) {
+            (bool directSuccess, ) = sponsor.call{value: directAmount}("");
+            require(directSuccess, "Direct sponsor payment failed");
+        } else {
+            treasuryAmount += directAmount;
+        }
+
+        (bool treasurySuccess, ) = treasury.call{value: treasuryAmount}("");
+        require(treasurySuccess, "Treasury payment failed");
     }
 
     receive() external payable {}
